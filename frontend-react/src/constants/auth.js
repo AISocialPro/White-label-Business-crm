@@ -1,0 +1,1 @@
+export const AUTH_STORAGE_KEY = "white_label_crm_auth";
