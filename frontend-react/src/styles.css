@@ -500,6 +500,36 @@ button.secondary {
   color: var(--muted);
 }
 
+.small {
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.kpi-inline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.kpi-inline-grid > div {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: #f4faf2;
+}
+
+.kpi-inline-grid h4 {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.kpi-inline-grid p {
+  margin: 6px 0 0;
+  font-size: 24px;
+  font-weight: 800;
+}
+
 .trend-wrap {
   display: grid;
   gap: 8px;
@@ -651,6 +681,10 @@ button.secondary {
   }
 
   .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi-inline-grid {
     grid-template-columns: 1fr;
   }
 

@@ -2,11 +2,18 @@ import axios from "axios";
 import { AUTH_STORAGE_KEY } from "../constants/auth";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000"
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000",
+  timeout: 15000
 });
+
+const makeRequestId = () => {
+  const random = Math.random().toString(36).slice(2, 8);
+  return `web-${Date.now()}-${random}`;
+};
 
 api.interceptors.request.use((config) => {
   const nextConfig = { ...config, headers: { ...config.headers } };
+  nextConfig.headers["x-request-id"] = makeRequestId();
 
   try {
     const persistedSession = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -29,6 +36,21 @@ api.interceptors.request.use((config) => {
 
   return nextConfig;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      const inBrowser = typeof window !== "undefined";
+      if (inBrowser && window.location.pathname !== "/login") {
+        window.location.assign("/login");
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export const setAuthHeaders = ({ token, tenantSlug }) => {
   if (token) {

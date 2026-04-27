@@ -158,6 +158,8 @@ export function DashboardPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isAutoRefresh, setIsAutoRefresh] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const [globalQuery, setGlobalQuery] = useState("");
   const [leadFilter, setLeadFilter] = useState("all");
 
@@ -197,6 +199,7 @@ export function DashboardPage() {
       setDeals(dealsResponse.data || []);
       setInvoices(invoicesResponse.data || []);
       setFollowUps(followUpsResponse.data || []);
+      setLastSyncedAt(new Date());
       setError("");
     } catch (requestError) {
       setError(requestError.response?.data?.message || "Could not load CRM data");
@@ -211,6 +214,18 @@ export function DashboardPage() {
     }
     loadData();
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !isAutoRefresh) {
+      return undefined;
+    }
+
+    const timer = setInterval(() => {
+      loadData();
+    }, 60_000);
+
+    return () => clearInterval(timer);
+  }, [token, isAutoRefresh]);
 
   const updateForm = (formKey, key, value) => {
     setForms((prev) => ({
@@ -379,6 +394,18 @@ export function DashboardPage() {
     const now = new Date();
     return followUps.filter((item) => item.status !== "completed" && new Date(item.dueAt) < now);
   }, [followUps]);
+
+  const invoiceCollectionRate = useMemo(() => {
+    const total = invoices.length || 1;
+    const paid = invoices.filter((invoice) => invoice.status === "paid").length;
+    return Math.round((paid / total) * 100);
+  }, [invoices]);
+
+  const leadConversionRate = useMemo(() => {
+    const total = leads.length || 1;
+    const won = leads.filter((lead) => lead.status === "won").length;
+    return Math.round((won / total) * 100);
+  }, [leads]);
 
   const stageCounts = useMemo(
     () =>
@@ -664,6 +691,56 @@ export function DashboardPage() {
               </div>
             ))}
           </div>
+        </article>
+      </section>
+
+      <section className="admin-overview-grid">
+        <article className="admin-panel">
+          <header className="admin-panel-header-inline">
+            <h2>Ops Health</h2>
+            <span className="pill">Live</span>
+          </header>
+          <div className="kpi-inline-grid">
+            <div>
+              <h4>Lead Conversion</h4>
+              <p>{leadConversionRate}%</p>
+            </div>
+            <div>
+              <h4>Invoice Collection</h4>
+              <p>{invoiceCollectionRate}%</p>
+            </div>
+            <div>
+              <h4>Open Deals</h4>
+              <p>{deals.filter((deal) => deal.stage !== "won" && deal.stage !== "lost").length}</p>
+            </div>
+            <div>
+              <h4>Customer Growth</h4>
+              <p>{customers.length}</p>
+            </div>
+          </div>
+        </article>
+
+        <article className="admin-panel">
+          <header className="admin-panel-header-inline">
+            <h2>Upcoming Follow-ups</h2>
+            <span className="pill">Next 5</span>
+          </header>
+          <ul className="admin-list compact">
+            {followUps
+              .slice()
+              .sort((a, b) => new Date(a.dueAt) - new Date(b.dueAt))
+              .slice(0, 5)
+              .map((item) => (
+                <li key={item._id}>
+                  <div>
+                    <strong>{item.customerName}</strong>
+                    <p>{toDateTimeLabel(item.dueAt)}</p>
+                  </div>
+                  <span className="pill">{item.channel}</span>
+                </li>
+              ))}
+            {!followUps.length && <li className="muted">No follow-ups scheduled</li>}
+          </ul>
         </article>
       </section>
     </>
@@ -966,8 +1043,16 @@ export function DashboardPage() {
           <div>
             <h2>{NAV_ITEMS.find((item) => item.key === activePage)?.label}</h2>
             <p>Logged in as {user?.name} ({user?.role})</p>
+            <p className="muted small">Last synced: {lastSyncedAt ? lastSyncedAt.toLocaleTimeString() : "Not synced yet"}</p>
           </div>
           <div className="topbar-actions">
+            <button
+              type="button"
+              className={isAutoRefresh ? "secondary" : "ghost-link"}
+              onClick={() => setIsAutoRefresh((prev) => !prev)}
+            >
+              Auto-refresh: {isAutoRefresh ? "On" : "Off"}
+            </button>
             <button type="button" className="secondary" onClick={loadData} disabled={isLoading}>{isLoading ? "Refreshing..." : "Refresh"}</button>
             <button type="button" onClick={() => { logout(); navigate("/login"); }}>Logout</button>
           </div>
